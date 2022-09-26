@@ -3,7 +3,6 @@ import requests
 import time
 import os
 from time import sleep
-from random import randint
 
 # Dictionary of url to response text
 response_cache_dict = {}
@@ -11,7 +10,7 @@ response_cache_dict = {}
 # Rate limit the requests to a CoinGecko url using cache
 CACHE_TTL_SECS = int(os.environ.get('CACHE_TTL_SECS')) # 900 = 15 mins
 
-# Max random wait in seconds before making the request to CoinGecko
+# Min wait in seconds between calls before making the request to CoinGecko
 WAIT_BETWEEN_CALLS_SECS = int(os.environ.get('WAIT_BETWEEN_CALLS_SECS')) # 10 secs
 
 # Timestamp of the previous call made by this instance
