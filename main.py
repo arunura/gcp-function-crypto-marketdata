@@ -3,6 +3,7 @@ import requests
 import time
 import os
 from time import sleep
+from threading import Lock
 
 # Dictionary of url to response text
 response_cache_dict = {}
@@ -12,6 +13,9 @@ CACHE_TTL_SECS = int(os.environ.get('CACHE_TTL_SECS')) # 900 = 15 mins
 
 # Min wait in seconds between calls before making the request to CoinGecko
 WAIT_BETWEEN_CALLS_SECS = int(os.environ.get('WAIT_BETWEEN_CALLS_SECS')) # 10 secs
+
+# To queue requests sequentially to CoinGecko
+cg_requests_lock = Lock()
 
 # Timestamp of the previous call made by this instance
 previous_call_ts = 0
@@ -32,7 +36,7 @@ def market_summary(request):
         Response object using `make_response`
         <https://flask.palletsprojects.com/en/1.1.x/api/#flask.make_response>.
     """
-    global previous_call_ts
+    global previous_call_ts, cg_requests_lock
     request_args = request.args
     if request_args and 'page' in request_args:
         page = request_args['page']
@@ -49,6 +53,7 @@ def market_summary(request):
     else:
         try:
             # Process the request only after the mandatory wait time since the previous call
+            cg_requests_lock.acquire()
             current_time = time.time()
             if (current_time - previous_call_ts) < WAIT_BETWEEN_CALLS_SECS:
                 sleep(previous_call_ts + WAIT_BETWEEN_CALLS_SECS - current_time)
@@ -58,6 +63,7 @@ def market_summary(request):
             data = response.text
             previous_call_ts = time.time()
             response_cache_dict[url] = (data, previous_call_ts)
+            cg_requests_lock.release()
             print(LOG_PAGE_INFO + "Retrieved data CoinGecko and added to cache.")
         except requests.HTTPError as exception:
             status_code = exception.response.status_code
